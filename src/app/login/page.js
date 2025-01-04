@@ -95,12 +95,7 @@ export default function AuthPage() {
           </button>
         </form>
 
-        <button
-          onClick={handleGoogleSignIn}
-          className="w-full mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50"
-        >
-          Sign {isSignUp ? "Up" : "In"} with Google
-        </button>
+       
 
         {/* Error & Info Messages */}
         {errorMsg && <p className="mt-2 text-red-500">{errorMsg}</p>}

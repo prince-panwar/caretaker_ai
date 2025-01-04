@@ -158,12 +158,13 @@ export default function HomePage() {
 
       const data = await response.json();
       const aiReply = data?.message || "No response from API";
-
+      setUserMessage("");
       setConversation((prev) => [
         ...prev,
         { role: "assistant", content: aiReply },
       ]);
       return aiReply;
+      
     } catch (error) {
       console.error("Error fetching API:", error);
     }

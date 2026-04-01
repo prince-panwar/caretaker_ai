@@ -1,117 +1,152 @@
 "use client";
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../clients/supabase";
 import { useRouter } from "next/navigation";
+
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
-    const router = useRouter();
-  const handleEmailChange = (e) => setEmail(e.target.value);
-  const handlePasswordChange = (e) => setPassword(e.target.value);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) router.replace("/");
+    });
+  }, [router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setInfoMsg("");
+    setLoading(true);
 
     try {
+      if (!supabase) throw new Error("Authentication not configured");
       if (isSignUp) {
-        // Sign up user
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         setInfoMsg("Sign-up successful! Please check your email to confirm.");
       } else {
-        // Login user
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        setInfoMsg("Login successful!");
         router.push("/");
       }
     } catch (error) {
       setErrorMsg(error.message);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-      });
-      if (error) throw error;
-      // Supabase will redirect the user back to your site after successful Google OAuth
-    } catch (error) {
-      setErrorMsg(error.message);
-    }
-  };
-  useEffect(() => {
-    // Check if user is logged in
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        // Redirect to login if not logged in
-        router.replace("/");
-      }
-
-    });
-  }, [router]);
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100 text-black">
-      {/* Auth Card */}
-      <div className="w-full max-w-md p-8 bg-white border border-gray-300 rounded-lg shadow">
-        <h2 className="text-2xl font-semibold mb-4 text-center">
-          {isSignUp ? "Sign Up" : "Login"}
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={handleEmailChange}
-            required
-            className="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={handlePasswordChange}
-            required
-            className="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            {isSignUp ? "Sign Up" : "Login"}
-          </button>
-        </form>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-500 to-teal-400 p-4">
+      <div className="w-full max-w-md">
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm mb-4">
+            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">CaretakerAI</h1>
+          <p className="text-blue-100 mt-1">Your AI Health Companion</p>
+        </div>
 
-       
+        {/* Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
+            {isSignUp ? "Create Account" : "Welcome Back"}
+          </h2>
 
-        {/* Error & Info Messages */}
-        {errorMsg && <p className="mt-2 text-red-500">{errorMsg}</p>}
-        {infoMsg && <p className="mt-2 text-green-500">{infoMsg}</p>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </div>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
+              />
+            </div>
 
-        {/* Toggle between login and signup */}
-        <p className="mt-4 text-center">
-          {isSignUp
-            ? "Already have an account?"
-            : "Don't have an account?"}{" "}
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-blue-600 underline"
-          >
-            {isSignUp ? "Login" : "Sign Up"} here
-          </button>
+            {/* Password */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
+              />
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-medium shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {isSignUp ? "Creating account..." : "Signing in..."}
+                </span>
+              ) : (
+                isSignUp ? "Create Account" : "Sign In"
+              )}
+            </button>
+          </form>
+
+          {/* Error / Info Messages */}
+          {errorMsg && (
+            <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-600 dark:text-red-400">{errorMsg}</p>
+            </div>
+          )}
+          {infoMsg && (
+            <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-600 dark:text-green-400">{infoMsg}</p>
+            </div>
+          )}
+
+          {/* Toggle */}
+          <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button
+              onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(""); setInfoMsg(""); }}
+              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+            >
+              {isSignUp ? "Sign in" : "Create one"}
+            </button>
+          </p>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-blue-200 mt-6">
+          Not a substitute for professional medical advice.
         </p>
       </div>
     </div>

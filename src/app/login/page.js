@@ -1,41 +1,43 @@
 "use client";
-import { useState, useEffect } from "react";
-import { supabase } from "../clients/supabase";
+import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [infoMsg, setInfoMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { status } = useSession();
 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) router.replace("/");
-    });
-  }, [router]);
+  // Redirect if already logged in
+  if (status === "authenticated") {
+    router.replace("/");
+    return null;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
-    setInfoMsg("");
     setLoading(true);
 
     try {
-      if (!supabase) throw new Error("Authentication not configured");
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setInfoMsg("Sign-up successful! Please check your email to confirm.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        router.push("/");
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters");
       }
+
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error("Invalid email or password");
+      }
+
+      router.push("/");
     } catch (error) {
       setErrorMsg(error.message);
     } finally {
@@ -60,7 +62,7 @@ export default function AuthPage() {
         {/* Card */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
-            {isSignUp ? "Create Account" : "Welcome Back"}
+            Sign In
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -92,10 +94,11 @@ export default function AuthPage() {
               </div>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Password (min. 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
               />
             </div>
@@ -112,35 +115,23 @@ export default function AuthPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {isSignUp ? "Creating account..." : "Signing in..."}
+                  Signing in...
                 </span>
               ) : (
-                isSignUp ? "Create Account" : "Sign In"
+                "Sign In"
               )}
             </button>
           </form>
 
-          {/* Error / Info Messages */}
+          {/* Error */}
           {errorMsg && (
             <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-600 dark:text-red-400">{errorMsg}</p>
             </div>
           )}
-          {infoMsg && (
-            <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
-              <p className="text-sm text-green-600 dark:text-green-400">{infoMsg}</p>
-            </div>
-          )}
 
-          {/* Toggle */}
-          <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(""); setInfoMsg(""); }}
-              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
-            >
-              {isSignUp ? "Sign in" : "Create one"}
-            </button>
+          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+            Enter any email and password to get started. No sign-up needed.
           </p>
         </div>
 

@@ -1,17 +1,17 @@
 # CaretakerAI
 
-An AI-powered healthcare chatbot that provides friendly, conversational health guidance through text and voice interfaces. Built with Next.js, Groq LLM, and Supabase authentication.
+An AI-powered healthcare chatbot that provides friendly, conversational health guidance through text and voice interfaces. Built with Next.js, Groq LLM, and NextAuth.js — fully self-contained with zero external database dependencies.
 
 **Live Demo:** [caretaker-ai.vercel.app](https://caretaker-ai.vercel.app)
 
 ## Features
 
-- **AI Health Advisor** -- Conversational healthcare guidance powered by Groq LLM (Llama 3.3 70B) with context-aware follow-up questions
+- **AI Health Advisor** -- Conversational healthcare guidance powered by Groq LLM (Llama 4 Scout) with context-aware follow-up questions
 - **Voice Chat** -- Speak naturally using your microphone with automatic silence detection, powered by Groq Whisper for transcription and Web Speech API for text-to-speech responses
 - **Text Chat** -- Traditional chat interface with markdown formatting (code blocks, bold, lists)
 - **Conversation Persistence** -- Chat history persists across page refreshes via localStorage
 - **Dark Mode** -- Toggle between light and dark themes with preference saved locally
-- **User Authentication** -- Secure email/password authentication via Supabase
+- **Stateless Authentication** -- JWT-based auth via NextAuth.js — no database required, never pauses or goes down
 - **Responsive Design** -- Optimized for both desktop and mobile devices
 
 ## Tech Stack
@@ -19,10 +19,10 @@ An AI-powered healthcare chatbot that provides friendly, conversational health g
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 15 (App Router, React 19) |
-| AI / LLM | Groq API (Llama 3.3 70B) via LangChain |
+| AI / LLM | Groq API (Llama 4 Scout) via LangChain |
 | Speech-to-Text | Groq Whisper Large V3 Turbo |
 | Text-to-Speech | Web Speech API (browser-native) |
-| Authentication | Supabase Auth |
+| Authentication | NextAuth.js (JWT sessions, no DB) |
 | Styling | Tailwind CSS 3.4 |
 | Deployment | Vercel |
 
@@ -31,11 +31,13 @@ An AI-powered healthcare chatbot that provides friendly, conversational health g
 ```
 src/app/
   page.js                    Main chat interface (text + voice modes)
-  login/page.js              Authentication page (sign up / sign in)
+  login/page.js              Authentication page
   layout.js                  Root layout with metadata and fonts
   globals.css                Global styles and dark mode variables
-  clients/supabase.js        Supabase client initialization
+  components/
+    SessionWrapper.js        NextAuth session provider
   api/
+    auth/[...nextauth]/      NextAuth.js API route (JWT auth)
     smartchat/route.ts       LLM chat endpoint (Groq + LangChain)
     voice/route.js           Audio transcription endpoint (Groq Whisper)
 ```
@@ -46,7 +48,6 @@ src/app/
 
 - Node.js 18+
 - A [Groq](https://console.groq.com/) API key
-- A [Supabase](https://supabase.com/) project (for authentication)
 
 ### Setup
 
@@ -65,16 +66,14 @@ src/app/
 
 3. **Configure environment variables**
 
-   Copy the example file and fill in your keys:
-
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
    ```ini
    API_KEY=your_groq_api_key
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   NEXTAUTH_SECRET=your_random_secret    # generate with: openssl rand -base64 32
+   NEXTAUTH_URL=http://localhost:3000
    ```
 
 4. **Run the development server**
@@ -106,7 +105,7 @@ Conversational health advisor with full chat history context.
     { "role": "assistant", "content": "..." },
     { "role": "user", "content": "It started yesterday" }
   ],
-  "id": "user_id"
+  "id": "user_email"
 }
 ```
 
@@ -136,7 +135,10 @@ Deploy to Vercel with one click:
 
 1. Push your code to GitHub
 2. Import the repository on [vercel.com](https://vercel.com)
-3. Add environment variables (`API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+3. Add environment variables:
+   - `API_KEY` -- your Groq API key
+   - `NEXTAUTH_SECRET` -- a random secret (`openssl rand -base64 32`)
+   - `NEXTAUTH_URL` -- your production URL (e.g., `https://caretaker-ai.vercel.app`)
 4. Deploy
 
 ## Disclaimer

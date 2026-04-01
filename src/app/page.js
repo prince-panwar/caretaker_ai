@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "./clients/supabase";
+import { useSession, signOut } from "next-auth/react";
 
 /* ── Inline SVG Icons ─────────────────────────────────────────── */
 
@@ -163,6 +163,7 @@ const SUGGESTIONS = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const messagesEndRef = useRef(null);
   const [userMessage, setUserMessage] = useState("");
   const [conversation, setConversation] = useState([]);
@@ -170,24 +171,19 @@ export default function HomePage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userData, setUserData] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
 
   // Auth check
   useEffect(() => {
-    if (!supabase) { router.replace("/login"); return; }
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.replace("/login");
-      } else {
-        setUserData(data.user);
-        const saved = localStorage.getItem(`chat_${data.user.id}`);
-        if (saved) {
-          try { setConversation(JSON.parse(saved)); } catch {}
-        }
+    if (status === "unauthenticated") {
+      router.replace("/login");
+    } else if (status === "authenticated" && session?.user?.email) {
+      const saved = localStorage.getItem(`chat_${session.user.email}`);
+      if (saved) {
+        try { setConversation(JSON.parse(saved)); } catch {}
       }
-    });
-  }, [router]);
+    }
+  }, [status, session, router]);
 
   // Dark mode init
   useEffect(() => {
@@ -205,10 +201,10 @@ export default function HomePage() {
 
   // Persist conversation
   useEffect(() => {
-    if (userData?.id && conversation.length > 0) {
-      localStorage.setItem(`chat_${userData.id}`, JSON.stringify(conversation));
+    if (session?.user?.email && conversation.length > 0) {
+      localStorage.setItem(`chat_${session.user.email}`, JSON.stringify(conversation));
     }
-  }, [conversation, userData]);
+  }, [conversation, session]);
 
   const toggleDarkMode = () => {
     const next = !darkMode;
@@ -219,11 +215,11 @@ export default function HomePage() {
 
   const handleNewChat = () => {
     setConversation([]);
-    if (userData?.id) localStorage.removeItem(`chat_${userData.id}`);
+    if (session?.user?.email) localStorage.removeItem(`chat_${session.user.email}`);
   };
 
   const handleLogout = async () => {
-    await supabase?.auth.signOut();
+    await signOut({ redirect: false });
     router.replace("/login");
   };
 
@@ -246,7 +242,7 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: newConversation,
-          id: userData.id,
+          id: session?.user?.email,
         }),
       });
 
@@ -362,7 +358,7 @@ export default function HomePage() {
 
   /* ── User initials for avatar ─────────────────────────────── */
 
-  const userInitial = userData?.email?.[0]?.toUpperCase() || "U";
+  const userInitial = session?.user?.email?.[0]?.toUpperCase() || "U";
 
   /* ── Render ───────────────────────────────────────────────── */
 

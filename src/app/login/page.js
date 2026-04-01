@@ -4,14 +4,15 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [infoMsg, setInfoMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { status } = useSession();
 
-  // Redirect if already logged in
   if (status === "authenticated") {
     router.replace("/");
     return null;
@@ -20,6 +21,7 @@ export default function AuthPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
+    setInfoMsg("");
     setLoading(true);
 
     try {
@@ -27,17 +29,40 @@ export default function AuthPage() {
         throw new Error("Password must be at least 6 characters");
       }
 
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
+      if (isSignUp) {
+        // Sign up: create account first
+        const res = await fetch("/api/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-      if (result?.error) {
-        throw new Error("Invalid email or password");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Sign up failed");
+
+        // Auto sign-in after successful sign-up
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.error) throw new Error("Account created but sign-in failed. Please try signing in.");
+        router.push("/");
+      } else {
+        // Sign in
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          throw new Error("Invalid email or password. Don't have an account? Sign up first.");
+        }
+
+        router.push("/");
       }
-
-      router.push("/");
     } catch (error) {
       setErrorMsg(error.message);
     } finally {
@@ -62,7 +87,7 @@ export default function AuthPage() {
         {/* Card */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
-            Sign In
+            {isSignUp ? "Create Account" : "Welcome Back"}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -94,7 +119,7 @@ export default function AuthPage() {
               </div>
               <input
                 type="password"
-                placeholder="Password (min. 6 characters)"
+                placeholder={isSignUp ? "Create a password (min. 6 characters)" : "Password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -115,23 +140,35 @@ export default function AuthPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Signing in...
+                  {isSignUp ? "Creating account..." : "Signing in..."}
                 </span>
               ) : (
-                "Sign In"
+                isSignUp ? "Create Account" : "Sign In"
               )}
             </button>
           </form>
 
-          {/* Error */}
+          {/* Error / Info Messages */}
           {errorMsg && (
             <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-600 dark:text-red-400">{errorMsg}</p>
             </div>
           )}
+          {infoMsg && (
+            <div className="mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-600 dark:text-green-400">{infoMsg}</p>
+            </div>
+          )}
 
-          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
-            Enter any email and password to get started. No sign-up needed.
+          {/* Toggle */}
+          <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button
+              onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(""); setInfoMsg(""); }}
+              className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+            >
+              {isSignUp ? "Sign in" : "Create one"}
+            </button>
           </p>
         </div>
 

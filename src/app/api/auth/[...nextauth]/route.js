@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import { getUser } from "../../../../lib/users";
 
 const handler = NextAuth({
   providers: [
@@ -12,13 +14,14 @@ const handler = NextAuth({
       async authorize(credentials) {
         const { email, password } = credentials;
 
-        // Validate inputs
         if (!email || !password) return null;
-        if (password.length < 6) return null;
 
-        // Stateless auth: any valid email + password (>= 6 chars) gets a session.
-        // The JWT itself IS the user record — no database needed.
-        // For production, add a real user store (Vercel KV, Planetscale, etc.)
+        const user = getUser(email);
+        if (!user) return null;
+
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) return null;
+
         return {
           id: email,
           email: email,
